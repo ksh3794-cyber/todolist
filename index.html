@@ -310,6 +310,18 @@
 </div>
 
 <script>
+// ── Auto Firebase Config ───────────────────────────────────────────────────
+const AUTO_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBdl2jUIgsoqNYk7rqRVK69UsDWUVBaPD0",
+  authDomain: "todolist-c0489.firebaseapp.com",
+  projectId: "todolist-c0489",
+  storageBucket: "todolist-c0489.firebasestorage.app",
+  messagingSenderId: "72838005283",
+  appId: "1:72838005283:web:358b01ebccdef35be9a796",
+  measurementId: "G-VRH3R8D5RH"
+};
+const AUTO_SYNC_KEY = "sunghee2024";
+
 // ── State ──────────────────────────────────────────────────────────────────
 let todos   = JSON.parse(localStorage.getItem('todos-v1') || 'null');
 let filter  = 'all', search = '', sort = 'created', editing = null;
@@ -642,6 +654,11 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 document.documentElement.setAttribute('data-theme', theme);
 document.getElementById('themeToggle').textContent = theme === 'light' ? '🌙' : '☀️';
 render();
+
+// 자동 Firebase 연결
+(async () => {
+  try { await connectFirebase(AUTO_FIREBASE_CONFIG, AUTO_SYNC_KEY); } catch(e) { console.warn('자동 연결 실패:', e); }
+})();
 </script>
 </body>
 </html>
