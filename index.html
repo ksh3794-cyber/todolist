@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>성희의 할일</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #e8e4f0; --surface: #ffffff; --surface2: #f8fafc;
+      --border: #e2e8f0; --text: #1e293b; --text-muted: #64748b;
+      --primary: #6366f1; --primary-hover: #4f46e5; --primary-light: #eef2ff;
+      --high: #ef4444; --high-bg: #fef2f2;
+      --medium: #f59e0b; --medium-bg: #fffbeb;
+      --low: #10b981; --low-bg: #f0fdf4;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1);
+      --radius: 12px; --radius-sm: 8px; --t: .2s ease;
+    }
+    [data-theme="dark"] {
+      --bg: #1a1625; --surface: #1e293b; --surface2: #263349;
+      --border: #334155; --text: #f1f5f9; --text-muted: #94a3b8;
+      --primary: #818cf8; --primary-hover: #6366f1; --primary-light: #1e1b4b;
+      --high-bg: #450a0a; --medium-bg: #431407; --low-bg: #052e16;
+      --shadow: 0 1px 3px rgba(0,0,0,.3); --shadow-md: 0 4px 6px -1px rgba(0,0,0,.3);
+    }
+    [data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea { color-scheme: dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background var(--t), color var(--t); }
+    .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 42px; height: 42px; background: var(--primary); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo h1 { font-size: 22px; font-weight: 700; }
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    .sync-status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; transition: background var(--t); }
+    .dot.on { background: var(--low); animation: blink 2s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .icon-btn { width: 40px; height: 40px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all var(--t); color: var(--text); }
+    .icon-btn:hover { background: var(--surface2); border-color: var(--primary); }
+
+    /* Stats */
+    .stats-card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .stats-numbers { display: flex; justify-content: space-around; margin-bottom: 16px; }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .stat-value.danger { color: var(--high); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .progress-bar { background: var(--surface2); border-radius: 999px; height: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #a78bfa); border-radius: 999px; transition: width .5s ease; width: 0%; }
+    .progress-label { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+
+    /* Add */
+    .add-card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .add-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .add-input { flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 15px; outline: none; transition: border-color var(--t); }
+    .add-input:focus { border-color: var(--primary); }
+    .add-input::placeholder { color: var(--text-muted); }
+    .add-btn { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 22px; font-weight: 600; transition: all var(--t); line-height: 1; }
+    .add-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .add-btn:active { transform: translateY(0); }
+    .add-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ctrl { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 13px; outline: none; cursor: pointer; transition: border-color var(--t); }
+    .ctrl:focus { border-color: var(--primary); }
+
+    /* Filter */
+    .filter-bar { background: var(--surface); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius-sm); padding: 4px; }
+    .filter-tab { padding: 6px 16px; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all var(--t); }
+    .filter-tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+    .search-wrapper { position: relative; flex: 1; min-width: 150px; }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; pointer-events: none; }
+    .search-input { width: 100%; padding: 8px 12px 8px 32px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 13px; outline: none; transition: border-color var(--t); }
+    .search-input:focus { border-color: var(--primary); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    /* Todo items */
+    .todo-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .todo-item { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; transition: all var(--t); position: relative; overflow: hidden; animation: slideIn .2s ease; }
+    .todo-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+    .todo-item.priority-high::before  { background: var(--high); }
+    .todo-item.priority-medium::before { background: var(--medium); }
+    .todo-item.priority-low::before   { background: var(--low); }
+    .todo-item:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .todo-item.done { opacity: .65; }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideOut { from{opacity:1;transform:translateX(0);max-height:200px;padding:14px 16px;margin-bottom:8px} to{opacity:0;transform:translateX(24px);max-height:0;padding:0;margin:0;border-width:0} }
+    .todo-item.removing { animation: slideOut .25s ease forwards; }
+    .checkbox { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all var(--t); margin-top: 1px; }
+    .checkbox:hover { border-color: var(--primary); }
+    .checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .checkbox.checked::after { content: '✓'; color: white; font-size: 13px; font-weight: 700; }
+    .todo-content { flex: 1; min-width: 0; }
+    .todo-text { font-size: 15px; color: var(--text); line-height: 1.4; word-break: break-word; }
+    .todo-text.done { text-decoration: line-through; color: var(--text-muted); }
+    .todo-edit-input { width: 100%; font-size: 15px; color: var(--text); border: 1.5px solid var(--primary); border-radius: 6px; padding: 4px 8px; background: var(--surface2); outline: none; }
+    .edit-meta-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .edit-ctrl { padding: 5px 9px; border: 1.5px solid var(--primary); border-radius: 6px; background: var(--surface2); color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+    .todo-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-high   { background: var(--high-bg);   color: var(--high); }
+    .badge-medium { background: var(--medium-bg); color: var(--medium); }
+    .badge-low    { background: var(--low-bg);    color: var(--low); }
+    .badge-cat    { background: var(--primary-light); color: var(--primary); }
+    .badge-date   { font-size: 11px; color: var(--text-muted); }
+    .badge-date.overdue   { color: var(--high); font-weight: 600; }
+    .badge-date.due-today { color: var(--medium); font-weight: 600; }
+    .todo-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity var(--t); }
+    .todo-item:hover .todo-actions { opacity: 1; }
+    .action-btn { width: 30px; height: 30px; border: none; background: transparent; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-muted); transition: all var(--t); }
+    .action-btn:hover { background: var(--surface2); }
+    .action-btn.edit-btn:hover   { color: var(--primary); }
+    .action-btn.delete-btn:hover { color: var(--high); }
+
+    /* Empty */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-icon { font-size: 56px; display: block; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    /* Footer */
+    .footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; color: var(--text-muted); font-size: 13px; }
+    .clear-btn { padding: 8px 16px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; transition: all var(--t); }
+    .clear-btn:hover { border-color: var(--high); color: var(--high); }
+
+    /* Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; backdrop-filter: blur(2px); }
+    .overlay.hidden { display: none; }
+    .modal-box { background: var(--surface); border-radius: var(--radius); padding: 28px; max-width: 520px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.25); border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .modal-sub   { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+    .steps { list-style: none; }
+    .step { display: flex; gap: 12px; margin-bottom: 14px; }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+    .step-body p { font-size: 13px; line-height: 1.7; }
+    .step-body a { color: var(--primary); text-decoration: none; }
+    .step-body a:hover { text-decoration: underline; }
+    .lbl { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+    .modal-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 13px; outline: none; transition: border-color var(--t); }
+    .modal-input:focus { border-color: var(--primary); }
+    .modal-textarea { min-height: 110px; resize: vertical; font-family: monospace; font-size: 12px; line-height: 1.5; }
+    .err-msg { color: var(--high); font-size: 12px; margin-top: 5px; display: none; }
+    .err-msg.show { display: block; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+    .btn { padding: 10px 18px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; transition: all var(--t); border: none; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+    .btn-danger { background: transparent; border: 1px solid var(--high); color: var(--high); }
+    .btn-danger:hover { background: var(--high-bg); }
+    .info-box { background: var(--primary-light); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 14px; font-size: 13px; line-height: 1.6; }
+    .info-box strong { color: var(--primary); display: block; margin-bottom: 6px; }
+    .key-display { font-family: monospace; font-size: 16px; font-weight: 700; letter-spacing: .05em; }
+
+    @media (max-width: 480px) {
+      .add-options { flex-direction: column; }
+      .filter-bar  { flex-direction: column; align-items: stretch; }
+      .sync-status span { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">✓</div>
+      <h1>성희의 할일</h1>
+    </div>
+    <div class="header-right">
+      <div class="sync-status">
+        <div class="dot" id="syncDot"></div>
+        <span id="syncLabel">오프라인</span>
+      </div>
+      <button class="icon-btn" id="syncBtn" title="동기화 설정">☁️</button>
+      <button class="icon-btn" id="themeToggle" title="테마 전환">🌙</button>
+    </div>
+  </header>
+
+  <div class="stats-card">
+    <div class="stats-numbers">
+      <div class="stat-item"><div class="stat-value" id="sTot">0</div><div class="stat-label">전체</div></div>
+      <div class="stat-item"><div class="stat-value" id="sAct">0</div><div class="stat-label">진행 중</div></div>
+      <div class="stat-item"><div class="stat-value" id="sDone">0</div><div class="stat-label">완료</div></div>
+      <div class="stat-item"><div class="stat-value danger" id="sOver">0</div><div class="stat-label">기한 초과</div></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+    <div class="progress-label"><span>완료율</span><span id="pText">0%</span></div>
+  </div>
+
+  <div class="add-card">
+    <div class="add-input-row">
+      <input type="text" class="add-input" id="addInput" placeholder="새로운 할 일을 입력하세요..." maxlength="200"/>
+      <button class="add-btn" id="addBtn">+</button>
+    </div>
+    <div class="add-options">
+      <select class="ctrl" id="selPriority">
+        <option value="medium">🟡 보통</option>
+        <option value="high">🔴 높음</option>
+        <option value="low">🟢 낮음</option>
+      </select>
+      <select class="ctrl" id="selCategory">
+        <option value="">📁 카테고리</option>
+        <option value="개인">👤 개인</option>
+        <option value="업무">💼 업무</option>
+        <option value="쇼핑">🛒 쇼핑</option>
+        <option value="건강">💪 건강</option>
+        <option value="학습">📚 학습</option>
+        <option value="기타">📌 기타</option>
+      </select>
+      <input type="date" class="ctrl" id="selDate" title="마감일"/>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-f="all">전체</button>
+      <button class="filter-tab" data-f="active">진행 중</button>
+      <button class="filter-tab" data-f="completed">완료</button>
+    </div>
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="검색..."/>
+    </div>
+    <select class="ctrl" id="sortSelect">
+      <option value="created">최신순</option>
+      <option value="due">마감일순</option>
+      <option value="priority">우선순위순</option>
+      <option value="alpha">가나다순</option>
+    </select>
+  </div>
+
+  <div class="todo-list" id="todoList"></div>
+
+  <div class="footer">
+    <span id="footerText"></span>
+    <button class="clear-btn" id="clearBtn">완료된 항목 삭제</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal-box">
+
+    <div id="viewSetup">
+      <p class="modal-title">☁️ 동기화 설정</p>
+      <p class="modal-sub">Firebase를 연결하면 모든 기기에서 할 일이 실시간으로 동기화됩니다.<br>최초 1회만 설정하면 이후 자동 연결됩니다.</p>
+
+      <ul class="steps">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><p><a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> 접속 → 구글 로그인 → <strong>프로젝트 추가</strong></p></div>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><p>프로젝트 홈 → <strong>웹 앱 추가(&lt;/&gt;)</strong> → 앱 등록 → <code>firebaseConfig</code> 복사</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><p>왼쪽 메뉴 → <strong>Firestore Database</strong> → 데이터베이스 만들기 → <strong>테스트 모드</strong> 선택</p></div>
+        </li>
+        <li class="step">
+          <div class="step-num">4</div>
+          <div class="step-body"><p>아래 입력 후 연결. 다른 기기도 동일하게 입력하면 자동으로 동기화됩니다.</p></div>
+        </li>
+      </ul>
+
+      <label class="lbl">Firebase 설정 코드 <small style="font-weight:400;color:var(--text-muted)">(firebaseConfig 객체 전체 붙여넣기)</small></label>
+      <textarea class="modal-input modal-textarea" id="fbConfigInput" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "my-app.firebaseapp.com",
+  "projectId": "my-app",
+  "storageBucket": "my-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123:web:abc"
+}'></textarea>
+      <p class="err-msg" id="errConfig"></p>
+
+      <label class="lbl">동기화 키 <small style="font-weight:400;color:var(--text-muted)">— 다른 기기에도 동일하게 입력</small></label>
+      <input type="text" class="modal-input" id="syncKeyInput" placeholder="예: sunghee2024  (영문·숫자·하이픈만)" maxlength="40"/>
+      <p class="err-msg" id="errKey"></p>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="cancelBtn">취소</button>
+        <button class="btn btn-primary" id="connectBtn">연결하기</button>
+      </div>
+    </div>
+
+    <div id="viewConnected" style="display:none">
+      <p class="modal-title">✅ 실시간 동기화 중</p>
+      <div class="info-box">
+        <strong>현재 동기화 키</strong>
+        <span class="key-display" id="connectedKey"></span>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:14px;line-height:1.7">
+        다른 컴퓨터에서도 이 앱을 열고 ☁️ 버튼을 눌러<br>
+        같은 Firebase 설정과 동기화 키를 입력하면 됩니다.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="disconnectBtn">연결 해제</button>
+        <button class="btn btn-ghost" id="closeBtn">닫기</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Auto Firebase Config ───────────────────────────────────────────────────
+const AUTO_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBdl2jUIgsoqNYk7rqRVK69UsDWUVBaPD0",
+  authDomain: "todolist-c0489.firebaseapp.com",
+  projectId: "todolist-c0489",
+  storageBucket: "todolist-c0489.firebasestorage.app",
+  messagingSenderId: "72838005283",
+  appId: "1:72838005283:web:358b01ebccdef35be9a796",
+  measurementId: "G-VRH3R8D5RH"
+};
+const AUTO_SYNC_KEY = "sunghee2024";
+
+// ── State ──────────────────────────────────────────────────────────────────
+let todos   = JSON.parse(localStorage.getItem('todos-v1') || 'null');
+let filter  = 'all', search = '', sort = 'created', editing = null;
+let theme   = localStorage.getItem('theme') || 'light';
+
+// Firebase
+let colRef = null, fbUnsub = null, connected = false, currentKey = '';
+
+// ── Sample data ────────────────────────────────────────────────────────────
+if (!todos) {
+  const d = n => { const dt = new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+  todos = [
+    mk('프로젝트 보고서 제출',       false,'high',  '업무', d(0)),
+    mk('운동 30분',                  false,'medium','건강', d(1)),
+    mk('책 한 챕터 읽기',            false,'low',   '학습', d(3)),
+    mk('Claude Code로 TODO 앱 완성', true, 'high',  '개인', d(0)),
+    mk('장보기 (우유, 달걀, 빵)',     false,'low',   '쇼핑', d(2)),
+  ];
+  saveLocal();
+}
+
+function mk(text, completed, priority, category, dueDate) {
+  return { id: Date.now().toString(36) + Math.random().toString(36).slice(2), text, completed, priority, category, dueDate, createdAt: new Date().toISOString(), completedAt: completed ? new Date().toISOString() : null };
+}
+function saveLocal() { localStorage.setItem('todos-v1', JSON.stringify(todos)); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function dateStatus(d) {
+  if (!d) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const due = new Date(d); due.setHours(0,0,0,0);
+  const diff = (due-now)/86400000;
+  return diff < 0 ? 'overdue' : diff === 0 ? 'due-today' : diff === 1 ? 'tomorrow' : 'future';
+}
+function dateLabel(d) {
+  if (!d) return '';
+  const s = dateStatus(d), [,m,day] = d.split('-');
+  if (s === 'overdue')   return `⚠ ${+m}/${+day} 기한 초과`;
+  if (s === 'due-today') return `📅 오늘 마감`;
+  if (s === 'tomorrow')  return `📅 내일`;
+  return `📅 ${+m}/${+day}`;
+}
+
+const PRIO_ORDER = {high:0,medium:1,low:2};
+const PRIO_LABEL = {high:'🔴 높음',medium:'🟡 보통',low:'🟢 낮음'};
+const CAT_ICON   = {'개인':'👤','업무':'💼','쇼핑':'🛒','건강':'💪','학습':'📚','기타':'📌'};
+
+// ── Firebase ────────────────────────────────────────────────────────────────
+async function connectFirebase(config, syncKey) {
+  // Delete existing app if projectId differs
+  if (firebase.apps.length) {
+    if (firebase.app().options.projectId !== config.projectId) {
+      await firebase.app().delete();
+      firebase.initializeApp(config);
+    }
+    // else reuse existing app
+  } else {
+    firebase.initializeApp(config);
+  }
+
+  const db  = firebase.firestore();
+  const col = db.collection('todos_' + syncKey.replace(/[^a-zA-Z0-9\-_]/g,'_'));
+
+  // Upload local todos if Firestore is empty
+  const snap = await col.get();
+  if (snap.empty && todos.length > 0) {
+    const batch = db.batch();
+    todos.forEach(t => batch.set(col.doc(t.id), t));
+    await batch.commit();
+  }
+
+  // Real-time listener
+  if (fbUnsub) fbUnsub();
+  fbUnsub = col.onSnapshot(
+    s => {
+      todos = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      saveLocal();
+      if (!connected) { connected = true; currentKey = syncKey; updateSyncUI(); }
+      render();
+    },
+    err => { console.error('Firestore:', err); connected = false; updateSyncUI(); }
+  );
+
+  colRef = col;
+  localStorage.setItem('fb-config', JSON.stringify(config));
+  localStorage.setItem('fb-sync-key', syncKey);
+  connected = true; currentKey = syncKey;
+  updateSyncUI();
+  closeModal();
+}
+
+function disconnectFirebase() {
+  if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+  colRef = null; connected = false; currentKey = '';
+  localStorage.removeItem('fb-config');
+  localStorage.removeItem('fb-sync-key');
+  updateSyncUI();
+  closeModal();
+}
+
+// Auto-restore on load
+(function () {
+  const cfg = localStorage.getItem('fb-config');
+  const key = localStorage.getItem('fb-sync-key');
+  if (cfg && key) { try { connectFirebase(JSON.parse(cfg), key); } catch(_) {} }
+})();
+
+// ── CRUD ───────────────────────────────────────────────────────────────────
+async function addTodo() {
+  const text = document.getElementById('addInput').value.trim();
+  if (!text) { document.getElementById('addInput').focus(); return; }
+  const todo = mk(text, false, document.getElementById('selPriority').value, document.getElementById('selCategory').value, document.getElementById('selDate').value);
+  document.getElementById('addInput').value = '';
+  document.getElementById('selDate').value = '';
+  document.getElementById('selCategory').value = '';
+  document.getElementById('selPriority').value = 'medium';
+  document.getElementById('addInput').focus();
+  if (colRef) { await colRef.doc(todo.id).set(todo); }
+  else { todos.unshift(todo); saveLocal(); render(); }
+}
+
+async function toggleTodo(id) {
+  const t = todos.find(t => t.id === id);
+  if (!t) return;
+  const completed = !t.completed, completedAt = completed ? new Date().toISOString() : null;
+  if (colRef) { await colRef.doc(id).update({ completed, completedAt }); }
+  else { t.completed = completed; t.completedAt = completedAt; saveLocal(); render(); }
+}
+
+function deleteTodo(id) {
+  const el = document.querySelector(`.todo-item[data-id="${id}"]`);
+  if (el) el.classList.add('removing');
+  setTimeout(async () => {
+    if (colRef) { await colRef.doc(id).delete(); }
+    else { todos = todos.filter(t => t.id !== id); saveLocal(); render(); }
+  }, 250);
+}
+
+async function saveEdit(id) {
+  const inp = document.getElementById('eInput');
+  const text = inp ? inp.value.trim() : '';
+  const priority = document.getElementById('ePriority')?.value || 'medium';
+  const category = document.getElementById('eCategory')?.value ?? '';
+  const dueDate  = document.getElementById('eDate')?.value ?? '';
+  editing = null;
+  if (!text) { render(); return; }
+  const changes = { text, priority, category, dueDate };
+  if (colRef) { await colRef.doc(id).update(changes); }
+  else { const t = todos.find(t => t.id === id); if (t) Object.assign(t, changes); saveLocal(); render(); }
+}
+
+async function clearCompleted() {
+  if (colRef) {
+    const db = firebase.firestore();
+    const batch = db.batch();
+    todos.filter(t => t.completed).forEach(t => batch.delete(colRef.doc(t.id)));
+    await batch.commit();
+  } else { todos = todos.filter(t => !t.completed); saveLocal(); render(); }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function visible() {
+  let r = [...todos];
+  if (filter === 'active')    r = r.filter(t => !t.completed);
+  if (filter === 'completed') r = r.filter(t =>  t.completed);
+  if (search) {
+    const q = search.toLowerCase();
+    r = r.filter(t => t.text.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q));
+  }
+  r.sort((a,b) => {
+    if (filter !== 'completed' && a.completed !== b.completed) return a.completed ? 1 : -1;
+    if (sort === 'priority') return PRIO_ORDER[a.priority] - PRIO_ORDER[b.priority];
+    if (sort === 'due') {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1; if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    }
+    if (sort === 'alpha') return a.text.localeCompare(b.text,'ko');
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  return r;
+}
+
+function render() {
+  const tot = todos.length, done = todos.filter(t => t.completed).length;
+  const td  = todayStr();
+  const over = todos.filter(t => !t.completed && t.dueDate && t.dueDate < td).length;
+  const pct  = tot ? Math.round(done/tot*100) : 0;
+  document.getElementById('sTot').textContent  = tot;
+  document.getElementById('sAct').textContent  = tot - done;
+  document.getElementById('sDone').textContent = done;
+  document.getElementById('sOver').textContent = over;
+  document.getElementById('pFill').style.width = pct + '%';
+  document.getElementById('pText').textContent = pct + '%';
+  document.getElementById('footerText').textContent =
+    (tot-done) === 0 ? (tot ? '모든 할 일을 완료했습니다! 🎉' : '할 일이 없습니다') : `${tot-done}개 남음`;
+
+  const items = visible();
+  const list  = document.getElementById('todoList');
+  if (!items.length) {
+    const icon = search ? '🔍' : filter === 'completed' ? '✅' : '📝';
+    const h    = search ? '검색 결과가 없습니다' : filter === 'completed' ? '완료된 항목이 없습니다' : '할 일을 추가해 보세요!';
+    const sub  = search ? '다른 검색어를 입력해 보세요' : filter !== 'all' ? '' : '위 입력창에 할 일을 입력하세요';
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">${icon}</span><h3>${h}</h3>${sub?`<p>${sub}</p>`:''}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(t => {
+    const ds = dateStatus(t.dueDate), isE = editing === t.id;
+    return `<div class="todo-item priority-${t.priority}${t.completed?' done':''}" data-id="${t.id}">
+  <div class="checkbox${t.completed?' checked':''}" data-a="toggle" data-id="${t.id}"></div>
+  <div class="todo-content">
+    ${isE ? `<input class="todo-edit-input" id="eInput" value="${esc(t.text)}" maxlength="200"/>
+    <div class="edit-meta-row">
+      <select class="edit-ctrl" id="ePriority">
+        <option value="high"${t.priority==='high'?' selected':''}>🔴 높음</option>
+        <option value="medium"${t.priority==='medium'?' selected':''}>🟡 보통</option>
+        <option value="low"${t.priority==='low'?' selected':''}>🟢 낮음</option>
+      </select>
+      <select class="edit-ctrl" id="eCategory">
+        <option value=""${!t.category?' selected':''}>📁 없음</option>
+        <option value="개인"${t.category==='개인'?' selected':''}>👤 개인</option>
+        <option value="업무"${t.category==='업무'?' selected':''}>💼 업무</option>
+        <option value="쇼핑"${t.category==='쇼핑'?' selected':''}>🛒 쇼핑</option>
+        <option value="건강"${t.category==='건강'?' selected':''}>💪 건강</option>
+        <option value="학습"${t.category==='학습'?' selected':''}>📚 학습</option>
+        <option value="기타"${t.category==='기타'?' selected':''}>📌 기타</option>
+      </select>
+      <input type="date" class="edit-ctrl" id="eDate" value="${t.dueDate||''}"/>
+    </div>`
+           : `<div class="todo-text${t.completed?' done':''}">${esc(t.text)}</div>`}
+    <div class="todo-meta">
+      <span class="badge badge-${t.priority}">${PRIO_LABEL[t.priority]}</span>
+      ${t.category ? `<span class="badge badge-cat">${CAT_ICON[t.category]||'📁'} ${esc(t.category)}</span>` : ''}
+      ${t.dueDate  ? `<span class="badge-date ${ds||''}">${dateLabel(t.dueDate)}</span>` : ''}
+    </div>
+  </div>
+  <div class="todo-actions">
+    ${isE ? `<button class="action-btn" data-a="save"   data-id="${t.id}" title="저장">💾</button>
+             <button class="action-btn" data-a="cancel" data-id="${t.id}" title="취소">✖</button>`
+           : `<button class="action-btn edit-btn"   data-a="edit" data-id="${t.id}" title="수정">✏️</button>
+              <button class="action-btn delete-btn" data-a="del"  data-id="${t.id}" title="삭제">🗑️</button>`}
+  </div>
+</div>`;
+  }).join('');
+  if (editing) { const inp = document.getElementById('eInput'); if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; } }
+}
+
+function updateSyncUI() {
+  const dot = document.getElementById('syncDot'), lbl = document.getElementById('syncLabel');
+  if (connected) { dot.classList.add('on'); lbl.textContent = '동기화 중'; lbl.style.color = 'var(--low)'; }
+  else            { dot.classList.remove('on'); lbl.textContent = '오프라인'; lbl.style.color = 'var(--text-muted)'; }
+}
+
+// ── Modal ───────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('overlay').classList.remove('hidden');
+  if (connected) {
+    document.getElementById('viewSetup').style.display     = 'none';
+    document.getElementById('viewConnected').style.display = '';
+    document.getElementById('connectedKey').textContent    = currentKey;
+  } else {
+    document.getElementById('viewSetup').style.display     = '';
+    document.getElementById('viewConnected').style.display = 'none';
+  }
+}
+function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
+
+// ── Events ──────────────────────────────────────────────────────────────────
+document.getElementById('syncBtn').addEventListener('click', openModal);
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('closeBtn').addEventListener('click', closeModal);
+document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+
+document.getElementById('connectBtn').addEventListener('click', async () => {
+  const rawCfg  = document.getElementById('fbConfigInput').value.trim();
+  const syncKey = document.getElementById('syncKeyInput').value.trim();
+  const eC = document.getElementById('errConfig'), eK = document.getElementById('errKey');
+  eC.classList.remove('show'); eK.classList.remove('show');
+
+  let config;
+  try {
+    // Accept JS object notation or JSON: strip assignment wrapper, then fix unquoted keys
+    const cleaned = rawCfg
+      .replace(/\/\/.*$/gm, '')          // remove JS comments
+      .replace(/^[\s\S]*?=\s*/, '')      // strip "const x = "
+      .replace(/;?\s*$/, '')
+      .replace(/([{,]\s*)([a-zA-Z_]\w*)(\s*:)/g, '$1"$2"$3'); // quote bare keys
+    config = JSON.parse(cleaned);
+    if (!config.apiKey || !config.projectId) throw new Error();
+  } catch {
+    eC.textContent = '올바른 Firebase 설정이 아닙니다. JSON 형식 또는 firebaseConfig 객체를 붙여넣으세요.';
+    eC.classList.add('show'); return;
+  }
+
+  if (!syncKey || !/^[a-zA-Z0-9\-_]{1,40}$/.test(syncKey)) {
+    eK.textContent = '동기화 키를 입력하세요 (영문·숫자·하이픈만 가능).';
+    eK.classList.add('show'); return;
+  }
+
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = '연결 중...'; btn.disabled = true;
+  try {
+    await connectFirebase(config, syncKey);
+  } catch(e) {
+    eC.textContent = '연결 실패: ' + e.message;
+    eC.classList.add('show');
+    btn.textContent = '연결하기'; btn.disabled = false;
+  }
+});
+
+document.getElementById('disconnectBtn').addEventListener('click', () => {
+  if (confirm('동기화를 해제하면 이 기기에서만 저장됩니다. 계속할까요?')) disconnectFirebase();
+});
+
+document.getElementById('todoList').addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const { a, id } = el.dataset;
+  if      (a === 'toggle') toggleTodo(id);
+  else if (a === 'del')    deleteTodo(id);
+  else if (a === 'edit')   { editing = id; render(); }
+  else if (a === 'save')   saveEdit(id);
+  else if (a === 'cancel') { editing = null; render(); }
+});
+document.getElementById('todoList').addEventListener('keydown', e => {
+  if (!e.target.classList.contains('todo-edit-input')) return;
+  if (e.key === 'Enter')  saveEdit(editing);
+  if (e.key === 'Escape') { editing = null; render(); }
+});
+
+document.getElementById('addBtn').addEventListener('click', addTodo);
+document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+document.querySelectorAll('.filter-tab').forEach(tab =>
+  tab.addEventListener('click', () => {
+    filter = tab.dataset.f;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active'); render();
+  })
+);
+document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; render(); });
+document.getElementById('sortSelect').addEventListener('change', e => { sort = e.target.value; render(); });
+document.getElementById('clearBtn').addEventListener('click', clearCompleted);
+document.getElementById('themeToggle').addEventListener('click', () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('theme', theme);
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.documentElement.setAttribute('data-theme', theme);
+document.getElementById('themeToggle').textContent = theme === 'light' ? '🌙' : '☀️';
+render();
+
+// 자동 Firebase 연결
+(async () => {
+  try { await connectFirebase(AUTO_FIREBASE_CONFIG, AUTO_SYNC_KEY); } catch(e) { console.warn('자동 연결 실패:', e); }
+})();
+</script>
+</body>
+</html>
