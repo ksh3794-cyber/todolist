@@ -98,6 +98,8 @@
     .todo-text { font-size: 15px; color: var(--text); line-height: 1.4; word-break: break-word; }
     .todo-text.done { text-decoration: line-through; color: var(--text-muted); }
     .todo-edit-input { width: 100%; font-size: 15px; color: var(--text); border: 1.5px solid var(--primary); border-radius: 6px; padding: 4px 8px; background: var(--surface2); outline: none; }
+    .edit-meta-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .edit-ctrl { padding: 5px 9px; border: 1.5px solid var(--primary); border-radius: 6px; background: var(--surface2); color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
     .todo-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
     .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
     .badge-high   { background: var(--high-bg);   color: var(--high); }
@@ -464,10 +466,14 @@ function deleteTodo(id) {
 async function saveEdit(id) {
   const inp = document.getElementById('eInput');
   const text = inp ? inp.value.trim() : '';
+  const priority = document.getElementById('ePriority')?.value || 'medium';
+  const category = document.getElementById('eCategory')?.value ?? '';
+  const dueDate  = document.getElementById('eDate')?.value ?? '';
   editing = null;
   if (!text) { render(); return; }
-  if (colRef) { await colRef.doc(id).update({ text }); }
-  else { const t = todos.find(t => t.id === id); if (t) t.text = text; saveLocal(); render(); }
+  const changes = { text, priority, category, dueDate };
+  if (colRef) { await colRef.doc(id).update(changes); }
+  else { const t = todos.find(t => t.id === id); if (t) Object.assign(t, changes); saveLocal(); render(); }
 }
 
 async function clearCompleted() {
@@ -530,7 +536,24 @@ function render() {
     return `<div class="todo-item priority-${t.priority}${t.completed?' done':''}" data-id="${t.id}">
   <div class="checkbox${t.completed?' checked':''}" data-a="toggle" data-id="${t.id}"></div>
   <div class="todo-content">
-    ${isE ? `<input class="todo-edit-input" id="eInput" value="${esc(t.text)}" maxlength="200"/>`
+    ${isE ? `<input class="todo-edit-input" id="eInput" value="${esc(t.text)}" maxlength="200"/>
+    <div class="edit-meta-row">
+      <select class="edit-ctrl" id="ePriority">
+        <option value="high"${t.priority==='high'?' selected':''}>🔴 높음</option>
+        <option value="medium"${t.priority==='medium'?' selected':''}>🟡 보통</option>
+        <option value="low"${t.priority==='low'?' selected':''}>🟢 낮음</option>
+      </select>
+      <select class="edit-ctrl" id="eCategory">
+        <option value=""${!t.category?' selected':''}>📁 없음</option>
+        <option value="개인"${t.category==='개인'?' selected':''}>👤 개인</option>
+        <option value="업무"${t.category==='업무'?' selected':''}>💼 업무</option>
+        <option value="쇼핑"${t.category==='쇼핑'?' selected':''}>🛒 쇼핑</option>
+        <option value="건강"${t.category==='건강'?' selected':''}>💪 건강</option>
+        <option value="학습"${t.category==='학습'?' selected':''}>📚 학습</option>
+        <option value="기타"${t.category==='기타'?' selected':''}>📌 기타</option>
+      </select>
+      <input type="date" class="edit-ctrl" id="eDate" value="${t.dueDate||''}"/>
+    </div>`
            : `<div class="todo-text${t.completed?' done':''}">${esc(t.text)}</div>`}
     <div class="todo-meta">
       <span class="badge badge-${t.priority}">${PRIO_LABEL[t.priority]}</span>
